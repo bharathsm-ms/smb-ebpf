@@ -1,0 +1,19 @@
+#!/usr/bin/env bpftrace
+#include <linux/fs.h>
+BEGIN
+{
+  printf("Print and count vfs_write for cifs... Hit Ctrl-C to end.\n");
+}
+
+kprobe:vfs_write* /strncmp(str(((struct file *)arg0)->f_path.dentry->d_sb->s_type->name), "cifs", 4) == 0/ {
+  printf("vfs_write for cifs file=%s, count=0x%x, offset=0x%x  \n", str(((struct file *)arg0)->f_path.dentry->d_name.name), arg2, *((int32 *)arg3));
+  @counter[pid, comm] = count();
+  
+}
+
+END
+{
+        printf("\nTop 20 vfs_write process:\n");
+        print(@counter, 20);
+        clear(@counter);
+}
